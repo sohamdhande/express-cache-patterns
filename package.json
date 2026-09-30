@@ -1,5 +1,5 @@
 {
-  "name": "cache-workshop",
+  "name": "express-cache-patterns",
   "version": "1.0.0",
   "description": "Express cache workshop using an in-memory cache with X-Cache headers and TTL.",
   "main": "server.js",

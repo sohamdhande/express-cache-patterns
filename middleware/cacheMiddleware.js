@@ -1,6 +1,5 @@
 const CACHE_TTL_MS = 60 * 1000;
 
-// key -> { value, createdAt }
 const cache = new Map();
 
 function getCacheEntry(key) {
@@ -10,7 +9,6 @@ function getCacheEntry(key) {
     return null;
   }
 
-  // TTL is measured from when the cache entry was created.
   const age = Date.now() - entry.createdAt;
 
   if (age > CACHE_TTL_MS) {
@@ -43,7 +41,6 @@ function cacheMiddleware(req, res, next) {
 
   res.set('X-Cache', 'MISS');
 
-  // Cache only successful JSON responses from GET requests.
   const originalJson = res.json.bind(res);
 
   res.json = body => {

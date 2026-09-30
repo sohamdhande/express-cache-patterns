@@ -1,6 +1,108 @@
 # Cache Workshop
 
-A small Express.js workshop project that demonstrates how an in-memory cache can reduce repeated file-system work.
+Express.js cache workshop implementing the required layered architecture:
+
+**Route → Middleware → Controller → Service → Database**
+
+## Project structure
+
+```
+cache_workshop/
+├── controllers/
+│   └── productController.js
+├── database/
+│   └── productDatabase.js
+├── middleware/
+│   ├── cacheMiddleware.js
+│   ├── errorMiddleware.js
+│   └── invalidateCacheMiddleware.js
+├── routes/
+│   └── productRoutes.js
+├── services/
+│   └── productService.js
+├── db.json
+├── server.js
+├── package.json
+└── .gitignore
+```
+
+## Cache behaviour
+
+Both GET endpoints use the cache middleware:
+
+- `GET /products`
+- `GET /products/:id`
+
+Every cache entry stores:
+
+- the cached value
+- the time at which the entry was created
+
+The TTL is **1 minute**.
+
+For every GET request:
+
+- `X-Cache: MISS` means the data was fetched from the database layer.
+- `X-Cache: HIT` means the valid cached value was returned.
+- After 1 minute, an entry is treated as expired and fresh data is fetched and cached again.
+
+The cache key is the request URL (`req.originalUrl`), so different product URLs have separate cache entries.
+
+## Cache invalidation
+
+Successful data-changing requests invalidate all cached product data:
+
+- `POST /products`
+- `PUT /products/:id`
+- `PATCH /products/:id`
+- `DELETE /products/:id`
+
+Invalidation happens after the response completes successfully. Failed writes do not clear the cache.
+
+## APIs
+
+### Get all products
+
+```
+GET /products
+```
+
+### Get one product
+
+```
+GET /products/:id
+```
+
+### Create a product
+
+```
+POST /products
+Content-Type: application/json
+
+{
+  "name": "Webcam",
+  "price": 79.99
+}
+```
+
+### Update a product
+
+Both PUT and PATCH are supported:
+
+```
+PATCH /products/1
+Content-Type: application/json
+
+{
+  "price": 54.99
+}
+```
+
+### Delete a product
+
+```
+DELETE /products/1
+```
 
 ## Run
 
@@ -9,77 +111,42 @@ npm install
 npm start
 ```
 
-The server runs on:
-
-```
-http://localhost:3000
-```
-
-For development with automatic restarts:
+For development:
 
 ```bash
 npm run server
 ```
 
-## APIs
-
-### GET /products
-
-The first request reads `db.json`, waits briefly to make the loading cost visible, and returns:
+The application runs on:
 
 ```
-X-Cache: MISS
+http://localhost:3000
 ```
 
-A repeated request while the cache entry is valid is served from memory:
+## Test caching
 
-```
-X-Cache: HIT
-```
-
-Cache entries expire after 60 seconds.
-
-### GET /products/:id
-
-Returns a single product by numeric id and applies the same in-memory caching behaviour.
-
-### POST /products
-
-Creates a product and invalidates cached `/products` responses so the next GET reads fresh data.
-
-Example:
-
-```json
-{
-  "name": "Webcam",
-  "price": 79.99
-}
-```
-
-Response status: `201 Created`.
-
-## Example testing
-
-Start the server and run:
+Run the same GET request twice:
 
 ```bash
 curl -i http://localhost:3000/products
 curl -i http://localhost:3000/products
-curl -i http://localhost:3000/products/1
-curl -i http://localhost:3000/products/1
-curl -i -X POST http://localhost:3000/products \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Webcam","price":79.99}'
-curl -i http://localhost:3000/products
 ```
 
-The first GET for a cache key should show `X-Cache: MISS`; the repeated GET should show `X-Cache: HIT`.
+The first request should return `X-Cache: MISS`; the second should return `X-Cache: HIT`.
 
-## Cache concepts demonstrated
+For a single product:
 
-- In-memory caching with JavaScript `Map`
-- Cache keys based on `req.originalUrl`
-- Cache hit/miss response headers
-- TTL-based expiration
-- Cache invalidation after a write
-- Simulated loading delay for observing the benefit of caching
+```bash
+curl -i http://localhost:3000/products/1
+curl -i http://localhost:3000/products/1
+```
+
+Then modify the data:
+
+```bash
+curl -i -X PATCH http://localhost:3000/products/1 \
+  -H 'Content-Type: application/json' \
+  -d '{"price":54.99}'
+```
+
+The next GET should be a `MISS`, because the successful update invalidated the old cache entry.
