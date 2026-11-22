@@ -1,13 +1,13 @@
-# Cache Workshop
+# Express Cache Patterns
 
-Express.js cache workshop implementing the required layered architecture:
+Express.js cache patterns implementing the required layered architecture:
 
 **Route → Middleware → Controller → Service → Database**
 
 ## Project structure
 
 ```
-cache_workshop/
+express-cache-patterns/
 ├── controllers/
 │   └── productController.js
 ├── database/
